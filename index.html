@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeSignal Pro V2.0 - Données Temps Réel</title>
+    <title>TradeSignal Pro V2.1 - Scalping & Timeframes Courts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -38,16 +38,38 @@
             0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
             50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); }
         }
+        .timeframe-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .timeframe-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
         .timeframe-btn.active {
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
         }
-        .api-status {
-            animation: pulse-dot 2s infinite;
+        .timeframe-btn.scalping {
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            color: #fbbf24;
         }
-        @keyframes pulse-dot {
+        .timeframe-btn.scalping.active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.3; }
         }
         .price-up { color: #10b981; }
         .price-down { color: #ef4444; }
@@ -61,16 +83,10 @@
             justify-content: center;
             z-index: 9999;
         }
-        .connection-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        .countdown-bar {
+            height: 2px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width linear;
         }
     </style>
 <base target="_blank">
@@ -80,9 +96,9 @@
     <div id="loadingScreen" class="loading-overlay">
         <div class="text-center">
             <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h2 class="text-2xl font-bold mb-2">TradeSignal Pro V2.0</h2>
-            <p class="text-gray-400">Connexion aux APIs de marché...</p>
-            <p class="text-sm text-gray-500 mt-2">Récupération des données temps réel</p>
+            <h2 class="text-2xl font-bold mb-2">TradeSignal Pro V2.1</h2>
+            <p class="text-gray-400">Initialisation des timeframes scalping...</p>
+            <p class="text-sm text-gray-500 mt-2">1s • 3s • 5s • 10s • 15s • 30s • 1m+</p>
         </div>
     </div>
 
@@ -97,15 +113,20 @@
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">TradeSignal Pro V2.0</h1>
-                        <p class="text-xs text-gray-400">Données temps réel • Multi-marchés</p>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">TradeSignal Pro V2.1</h1>
+                        <p class="text-xs text-gray-400">Scalping • 12 Timeframes • Données temps réel</p>
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-3">
                     <div class="flex items-center space-x-2 glass px-3 py-1.5 rounded-lg">
                         <div id="apiStatusDot" class="connection-dot"></div>
-                        <span id="apiStatusText" class="text-xs text-gray-300">Connecté</span>
+                        <span id="apiStatusText" class="text-xs text-gray-300">Live</span>
+                    </div>
+
+                    <div class="glass px-3 py-1.5 rounded-lg text-xs">
+                        <span class="text-gray-400">Next update:</span>
+                        <span id="countdown" class="ml-1 font-mono text-indigo-400">3s</span>
                     </div>
 
                     <button id="soundToggle" class="p-2 glass rounded-lg hover:bg-gray-800 transition-colors">
@@ -147,28 +168,49 @@
             </div>
         </section>
 
-        <!-- Timeframes -->
+        <!-- Timeframes - 12 options complètes -->
         <section class="glass-panel rounded-xl p-4">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-semibold text-gray-300 uppercase">Timeframes</h2>
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase">Timeframes</h2>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span class="text-yellow-500">🟡</span> Scalping (1s-30s) • 
+                        <span class="text-blue-400">🔵</span> Intraday (1m-1h)
+                    </p>
+                </div>
                 <div class="flex items-center space-x-2">
-                    <span class="text-xs text-gray-500">Refresh:</span>
-                    <select id="refreshInterval" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white">
-                        <option value="1000">1s</option>
-                        <option value="3000" selected>3s</option>
-                        <option value="5000">5s</option>
+                    <span class="text-xs text-gray-500">Mode:</span>
+                    <select id="updateMode" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white">
+                        <option value="real">Temps réel</option>
+                        <option value="candle">Bougie complète</option>
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
-                <button class="timeframe-btn active px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1m">1m</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="3m">3m</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="5m">5m</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="15m">15m</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="30m">30m</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1h">1h</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="4h">4h</button>
-                <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1d">1D</button>
+
+            <!-- Scalping Timeframes (1s - 30s) -->
+            <div class="mb-3">
+                <p class="text-xs text-yellow-500 mb-2 font-semibold">⚡ SCALPING (Ultra-rapide)</p>
+                <div class="grid grid-cols-6 gap-2">
+                    <button class="timeframe-btn scalping active px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1s" data-ms="1000">1s</button>
+                    <button class="timeframe-btn scalping px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="3s" data-ms="3000">3s</button>
+                    <button class="timeframe-btn scalping px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="5s" data-ms="5000">5s</button>
+                    <button class="timeframe-btn scalping px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="10s" data-ms="10000">10s</button>
+                    <button class="timeframe-btn scalping px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="15s" data-ms="15000">15s</button>
+                    <button class="timeframe-btn scalping px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="30s" data-ms="30000">30s</button>
+                </div>
+            </div>
+
+            <!-- Standard Timeframes (1m - 1h) -->
+            <div>
+                <p class="text-xs text-blue-400 mb-2 font-semibold">📊 INTRADAY</p>
+                <div class="grid grid-cols-6 gap-2">
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1m" data-ms="60000">1m</button>
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="3m" data-ms="180000">3m</button>
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="5m" data-ms="300000">5m</button>
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="15m" data-ms="900000">15m</button>
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="30m" data-ms="1800000">30m</button>
+                    <button class="timeframe-btn px-2 py-2 rounded-lg bg-gray-800 text-xs font-medium" data-tf="1h" data-ms="3600000">1h</button>
+                </div>
             </div>
         </section>
 
@@ -177,12 +219,13 @@
             <!-- Main Signal -->
             <div class="glass-panel rounded-xl p-5 text-center">
                 <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase">Signal Principal</h3>
-                <div id="mainSignal" class="signal-neutral rounded-xl p-6 transition-all duration-500">
+                <div id="mainSignal" class="signal-neutral rounded-xl p-6 transition-all duration-500 bg-gray-700">
                     <div class="text-4xl mb-2">⏳</div>
                     <div id="signalText" class="text-2xl font-bold">ANALYSE...</div>
-                    <div id="signalStrength" class="text-xs mt-2 opacity-80">Chargement...</div>
+                    <div id="signalStrength" class="text-xs mt-2 opacity-80">Chargement des données...</div>
                 </div>
                 <div id="signalTime" class="text-xs text-gray-500 mt-2">--:--:--</div>
+                <div id="signalCount" class="text-xs text-indigo-400 mt-1">Signaux: 0</div>
             </div>
 
             <!-- Indicators -->
@@ -202,7 +245,7 @@
                         <span id="emaValue" class="font-bold mono text-sm">--</span>
                     </div>
                     <div class="flex justify-between items-center p-2 bg-gray-800/50 rounded-lg">
-                        <span class="text-xs text-gray-300">Volume 24h</span>
+                        <span class="text-xs text-gray-300">Volume</span>
                         <span id="volumeValue" class="font-bold mono text-sm">--</span>
                     </div>
                 </div>
@@ -225,8 +268,8 @@
                         <span id="volatilityValue" class="font-bold mono text-sm">--</span>
                     </div>
                     <div class="flex justify-between items-center p-2 bg-gray-800/50 rounded-lg">
-                        <span class="text-xs text-gray-300">Source API</span>
-                        <span id="apiSource" class="font-bold text-xs text-indigo-400">--</span>
+                        <span class="text-xs text-gray-300">TF Actuel</span>
+                        <span id="currentTF" class="font-bold text-xs text-yellow-400">1s</span>
                     </div>
                 </div>
             </div>
@@ -238,6 +281,7 @@
                 <h2 class="text-sm font-semibold text-gray-300 uppercase">Graphique Temps Réel</h2>
                 <div class="flex items-center space-x-2">
                     <span id="lastUpdate" class="text-xs text-gray-500">Dernière mise à jour: --</span>
+                    <span id="updateSpeed" class="text-xs text-yellow-500">Ultra-rapide</span>
                 </div>
             </div>
             <div class="relative h-80 md:h-96">
@@ -253,6 +297,7 @@
                     <thead>
                         <tr class="text-gray-400 border-b border-gray-700">
                             <th class="text-left py-2">Heure</th>
+                            <th class="text-left py-2">TF</th>
                             <th class="text-left py-2">Signal</th>
                             <th class="text-left py-2">Prix</th>
                             <th class="text-left py-2">Force</th>
@@ -260,7 +305,7 @@
                         </tr>
                     </thead>
                     <tbody id="signalHistory">
-                        <tr><td colspan="5" class="py-4 text-center text-gray-500">En attente de signaux...</td></tr>
+                        <tr><td colspan="6" class="py-4 text-center text-gray-500">En attente de signaux...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -269,37 +314,55 @@
 
     <footer class="border-t border-gray-800 mt-8 py-6">
         <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="text-gray-500 text-xs">TradeSignal Pro V2.0 • Données: Binance/CoinGecko/ForexAPI</p>
-            <p class="text-gray-600 text-xs mt-1">Les signaux sont indicatifs. Tradez avec prudence.</p>
+            <p class="text-gray-500 text-xs">TradeSignal Pro V2.1 • 12 Timeframes • Données temps réel</p>
+            <p class="text-gray-600 text-xs mt-1">Scalping: 1s-30s • Intraday: 1m-1h</p>
         </div>
     </footer>
 
     <script>
         // ==========================================
-        // TRADESIGNAL PRO V2.0 - DONNÉES TEMPS RÉEL
+        // TRADESIGNAL PRO V2.1 - 12 TIMEFRAMES
         // ==========================================
 
         const App = {
-            // Configuration
             config: {
                 soundEnabled: true,
-                refreshInterval: 3000,
                 currentMarket: 'crypto',
                 currentPair: 'BTCUSDT',
-                currentTimeframe: '1m',
+                currentTimeframe: '1s',
+                currentInterval: 1000, // ms
                 chart: null,
                 priceHistory: [],
                 signals: [],
                 lastPrice: 0,
+                updateTimer: null,
+                countdownTimer: null,
+                nextUpdateTime: 0,
+                candleData: {}, // Stockage des bougies par timeframe
                 apiSources: {
                     crypto: 'Binance',
                     forex: 'ExchangeRate-API',
-                    indices: 'Yahoo Finance (simulated)',
-                    commodities: 'Market Data (simulated)'
+                    indices: 'Market Data',
+                    commodities: 'Market Data'
                 }
             },
 
-            // Pairs disponibles par marché
+            // Les 12 timeframes complets
+            timeframes: {
+                '1s': { label: '1s', ms: 1000, type: 'scalping' },
+                '3s': { label: '3s', ms: 3000, type: 'scalping' },
+                '5s': { label: '5s', ms: 5000, type: 'scalping' },
+                '10s': { label: '10s', ms: 10000, type: 'scalping' },
+                '15s': { label: '15s', ms: 15000, type: 'scalping' },
+                '30s': { label: '30s', ms: 30000, type: 'scalping' },
+                '1m': { label: '1m', ms: 60000, type: 'intraday' },
+                '3m': { label: '3m', ms: 180000, type: 'intraday' },
+                '5m': { label: '5m', ms: 300000, type: 'intraday' },
+                '15m': { label: '15m', ms: 900000, type: 'intraday' },
+                '30m': { label: '30m', ms: 1800000, type: 'intraday' },
+                '1h': { label: '1h', ms: 3600000, type: 'intraday' }
+            },
+
             pairs: {
                 crypto: [
                     { symbol: 'BTCUSDT', name: 'BTC/USDT', display: 'Bitcoin' },
@@ -343,21 +406,19 @@
                 ]
             },
 
-            // Initialisation
             init() {
                 this.initAudio();
                 this.initChart();
                 this.initEventListeners();
                 this.updatePairSelect();
                 this.startDataStream();
+                this.startCountdown();
 
-                // Cacher le loading après 2s
                 setTimeout(() => {
                     document.getElementById('loadingScreen').style.display = 'none';
-                }, 2000);
+                }, 1500);
             },
 
-            // Audio Context
             initAudio() {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             },
@@ -385,7 +446,6 @@
                 osc.stop(this.audioContext.currentTime + 0.3);
             },
 
-            // Chart.js
             initChart() {
                 const ctx = document.getElementById('tradingChart').getContext('2d');
                 this.config.chart = new Chart(ctx, {
@@ -435,20 +495,18 @@
                 });
             },
 
-            // Event Listeners
             initEventListeners() {
                 // Market selector
                 document.getElementById('marketSelect').addEventListener('change', (e) => {
                     this.config.currentMarket = e.target.value;
                     this.updatePairSelect();
-                    this.config.priceHistory = [];
+                    this.resetData();
                 });
 
                 // Pair selector
                 document.getElementById('pairSelect').addEventListener('change', (e) => {
                     this.config.currentPair = e.target.value;
-                    this.config.priceHistory = [];
-                    this.config.lastPrice = 0;
+                    this.resetData();
                 });
 
                 // Timeframes
@@ -456,14 +514,18 @@
                     btn.addEventListener('click', (e) => {
                         document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
                         e.target.classList.add('active');
-                        this.config.currentTimeframe = e.target.dataset.tf;
-                    });
-                });
 
-                // Refresh interval
-                document.getElementById('refreshInterval').addEventListener('change', (e) => {
-                    this.config.refreshInterval = parseInt(e.target.value);
-                    this.restartDataStream();
+                        const tf = e.target.dataset.tf;
+                        this.config.currentTimeframe = tf;
+                        this.config.currentInterval = parseInt(e.target.dataset.ms);
+
+                        document.getElementById('currentTF').textContent = tf;
+                        document.getElementById('updateSpeed').textContent = 
+                            this.timeframes[tf].type === 'scalping' ? 'Ultra-rapide' : 'Standard';
+
+                        this.resetData();
+                        this.restartDataStream();
+                    });
                 });
 
                 // Sound toggle
@@ -472,12 +534,23 @@
                     document.getElementById('soundIcon').style.opacity = this.config.soundEnabled ? '1' : '0.3';
                 });
 
-                // Resume audio context on interaction
+                // Resume audio context
                 document.addEventListener('click', () => {
                     if (this.audioContext.state === 'suspended') {
                         this.audioContext.resume();
                     }
                 }, { once: true });
+            },
+
+            resetData() {
+                this.config.priceHistory = [];
+                this.config.lastPrice = 0;
+                this.config.candleData = {};
+                if (this.config.chart) {
+                    this.config.chart.data.labels = [];
+                    this.config.chart.data.datasets[0].data = [];
+                    this.config.chart.update();
+                }
             },
 
             updatePairSelect() {
@@ -491,13 +564,11 @@
                 this.config.currentPair = pairs[0].symbol;
             },
 
-            // API Fetching
             async fetchRealData() {
                 try {
                     let price, volume, high24, low24, change24;
 
                     if (this.config.currentMarket === 'crypto') {
-                        // Binance API - données temps réel
                         const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${this.config.currentPair}`);
                         const data = await response.json();
 
@@ -508,7 +579,6 @@
                         change24 = parseFloat(data.priceChangePercent);
 
                     } else if (this.config.currentMarket === 'forex') {
-                        // ExchangeRate-API pour Forex (gratuit)
                         const base = this.config.currentPair.substring(0, 3);
                         const quote = this.config.currentPair.substring(3);
 
@@ -517,22 +587,18 @@
                             const data = await response.json();
                             price = data.rates[quote];
 
-                            // Simuler les autres données pour forex
                             volume = Math.random() * 1000000;
                             change24 = (Math.random() - 0.5) * 2;
                             high24 = price * (1 + Math.abs(change24) / 100);
                             low24 = price * (1 - Math.abs(change24) / 100);
                         } catch (e) {
-                            // Fallback si l'API échoue
                             price = this.config.lastPrice || this.getDefaultPrice();
                             volume = 0;
                             change24 = 0;
                             high24 = price;
                             low24 = price;
                         }
-
                     } else {
-                        // Indices et Commodities - simulation basée sur des données réalistes
                         price = this.simulateRealisticPrice();
                         volume = Math.random() * 10000;
                         change24 = (Math.random() - 0.5) * 3;
@@ -541,10 +607,8 @@
                     }
 
                     return { price, volume, high24, low24, change24 };
-
                 } catch (error) {
                     console.error('API Error:', error);
-                    // Fallback sur simulation réaliste
                     const price = this.simulateRealisticPrice();
                     return {
                         price,
@@ -569,14 +633,13 @@
                     this.config.lastPrice = this.getDefaultPrice();
                 }
 
-                const volatility = 0.001; // 0.1% de volatilité
+                const volatility = 0.001;
                 const change = (Math.random() - 0.5) * volatility * this.config.lastPrice;
                 this.config.lastPrice += change;
 
                 return this.config.lastPrice;
             },
 
-            // Technical Analysis
             calculateIndicators() {
                 const prices = this.config.priceHistory;
                 if (prices.length < 14) return null;
@@ -622,26 +685,22 @@
                 return ema12 - ema26;
             },
 
-            generateSignal(indicators, currentPrice) {
+            generateSignal(indicators) {
                 if (!indicators) return { signal: 'NEUTRAL', strength: 0, reason: 'Analyse...' };
 
                 const { rsi, macd, ema9, ema21 } = indicators;
                 let score = 50;
                 let reasons = [];
 
-                // RSI
                 if (rsi < 30) { score += 15; reasons.push('RSI survendu'); }
                 else if (rsi > 70) { score -= 15; reasons.push('RSI surachat'); }
 
-                // MACD
                 if (macd > 0) { score += 10; reasons.push('MACD positif'); }
                 else { score -= 10; reasons.push('MACD négatif'); }
 
-                // EMA Cross
                 if (ema9 > ema21) { score += 10; reasons.push('Golden Cross'); }
                 else { score -= 10; reasons.push('Death Cross'); }
 
-                // Déterminer signal
                 let signal = 'NEUTRAL';
                 let strength = Math.abs(score - 50);
 
@@ -655,7 +714,6 @@
                 };
             },
 
-            // Update UI
             async updateData() {
                 const data = await this.fetchRealData();
 
@@ -679,7 +737,6 @@
                 const indicators = this.calculateIndicators();
 
                 if (indicators) {
-                    // Update indicator displays
                     document.getElementById('rsiValue').textContent = indicators.rsi.toFixed(1);
                     document.getElementById('rsiValue').className = `font-bold mono text-sm ${indicators.rsi > 70 ? 'text-red-400' : indicators.rsi < 30 ? 'text-green-400' : 'text-gray-300'}`;
 
@@ -689,8 +746,7 @@
                     document.getElementById('emaValue').textContent = indicators.ema9 > indicators.ema21 ? 'HAUSSIER' : 'BAISSIER';
                     document.getElementById('emaValue').className = `font-bold mono text-sm ${indicators.ema9 > indicators.ema21 ? 'text-green-400' : 'text-red-400'}`;
 
-                    // Generate and display signal
-                    const signal = this.generateSignal(indicators, data.price);
+                    const signal = this.generateSignal(indicators);
                     this.displaySignal(signal, data.price, indicators.rsi);
                 }
 
@@ -699,13 +755,15 @@
                 document.getElementById('high24Value').textContent = '$' + data.high24.toFixed(2);
                 document.getElementById('low24Value').textContent = '$' + data.low24.toFixed(2);
                 document.getElementById('volatilityValue').textContent = ((data.high24 - data.low24) / data.price * 100).toFixed(2) + '%';
-                document.getElementById('apiSource').textContent = this.config.apiSources[this.config.currentMarket];
 
                 // Update chart
                 this.updateChart(data.price);
 
                 // Update timestamp
                 document.getElementById('lastUpdate').textContent = 'Dernière mise à jour: ' + new Date().toLocaleTimeString();
+
+                // Reset countdown
+                this.config.nextUpdateTime = Date.now() + this.config.currentInterval;
             },
 
             displaySignal(signal, price, rsi) {
@@ -714,10 +772,8 @@
                 const signalStrength = document.getElementById('signalStrength');
                 const signalTime = document.getElementById('signalTime');
 
-                // Remove old classes
-                signalEl.classList.remove('signal-buy', 'signal-sell', 'signal-neutral');
+                signalEl.classList.remove('signal-buy', 'signal-sell', 'bg-gray-700');
 
-                // Add appropriate class
                 if (signal.signal === 'BUY') {
                     signalEl.classList.add('signal-buy');
                     signalText.textContent = 'ACHAT';
@@ -725,14 +781,13 @@
                     signalEl.classList.add('signal-sell');
                     signalText.textContent = 'VENTE';
                 } else {
-                    signalEl.classList.add('signal-neutral');
+                    signalEl.classList.add('bg-gray-700');
                     signalText.textContent = 'NEUTRE';
                 }
 
                 signalStrength.textContent = `Force: ${signal.strength}% - ${signal.reason}`;
                 signalTime.textContent = new Date().toLocaleTimeString();
 
-                // Play sound if new signal
                 if (this.config.signals.length > 0) {
                     const lastSignal = this.config.signals[0];
                     if (lastSignal.signal !== signal.signal && signal.signal !== 'NEUTRAL') {
@@ -745,6 +800,8 @@
 
                 this.config.signals.unshift({ ...signal, price, time: new Date(), rsi });
                 if (this.config.signals.length > 20) this.config.signals.pop();
+
+                document.getElementById('signalCount').textContent = `Signaux: ${this.config.signals.length}`;
             },
 
             addToHistory(signal, price, rsi) {
@@ -755,6 +812,7 @@
                 row.className = 'border-b border-gray-800 hover:bg-gray-800/30';
                 row.innerHTML = `
                     <td class="py-2 text-gray-400">${new Date().toLocaleTimeString()}</td>
+                    <td class="py-2 text-gray-400">${this.config.currentTimeframe}</td>
                     <td class="py-2">
                         <span class="px-2 py-1 rounded text-xs font-bold ${
                             signal.signal === 'BUY' ? 'bg-green-500/20 text-green-400' : 
@@ -791,21 +849,30 @@
                 chart.update('none');
             },
 
-            // Data Stream
+            startCountdown() {
+                this.config.nextUpdateTime = Date.now() + this.config.currentInterval;
+
+                this.config.countdownTimer = setInterval(() => {
+                    const remaining = Math.max(0, this.config.nextUpdateTime - Date.now());
+                    const seconds = Math.ceil(remaining / 1000);
+                    document.getElementById('countdown').textContent = seconds + 's';
+                }, 100);
+            },
+
             startDataStream() {
                 this.updateData();
-                this.dataInterval = setInterval(() => this.updateData(), this.config.refreshInterval);
+                this.config.updateTimer = setInterval(() => this.updateData(), this.config.currentInterval);
             },
 
             restartDataStream() {
-                if (this.dataInterval) {
-                    clearInterval(this.dataInterval);
-                }
+                if (this.config.updateTimer) clearInterval(this.config.updateTimer);
+                if (this.config.countdownTimer) clearInterval(this.config.countdownTimer);
+
                 this.startDataStream();
+                this.startCountdown();
             }
         };
 
-        // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             App.init();
         });
